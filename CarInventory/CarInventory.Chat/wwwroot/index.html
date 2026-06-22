@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Car Inventory — AI Chat</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: #0f172a;
+      color: #f1f5f9;
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+    }
+
+    /* ── Header ──────────────────────────────────────────────────────── */
+    header {
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      padding: 0.875rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .logo { font-size: 1.5rem; flex-shrink: 0; }
+    .header-text { flex: 1; min-width: 0; }
+    .header-text h1   { font-size: 1.05rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-text span { font-size: 0.75rem; color: #64748b; }
+    #clearBtn {
+      flex-shrink: 0;
+      background: transparent;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      border-radius: 6px;
+      padding: 0.35rem 0.75rem;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-family: inherit;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+    #clearBtn:hover { background: #334155; color: #f1f5f9; }
+
+    /* ── Suggested chips ─────────────────────────────────────────────── */
+    #chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      padding: 0.65rem 1.5rem;
+      background: #0f172a;
+      border-bottom: 1px solid #1e293b;
+    }
+    .chip {
+      background: #1e293b;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      border-radius: 20px;
+      padding: 0.28rem 0.75rem;
+      font-size: 0.78rem;
+      cursor: pointer;
+      transition: all .15s;
+      font-family: inherit;
+    }
+    .chip:hover { background: #334155; color: #f1f5f9; border-color: #475569; }
+
+    /* ── Chat area ───────────────────────────────────────────────────── */
+    #chat {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.6rem;
+      scroll-behavior: smooth;
+    }
+
+    .message {
+      max-width: 78%;
+      padding: 0.7rem 1rem;
+      border-radius: 12px;
+      line-height: 1.6;
+      font-size: 0.9rem;
+      word-break: break-word;
+    }
+    .message.user {
+      align-self: flex-end;
+      background: #0ea5e9;
+      color: #fff;
+      border-bottom-right-radius: 3px;
+      white-space: pre-wrap;
+    }
+    .message.assistant {
+      align-self: flex-start;
+      background: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      border-bottom-left-radius: 3px;
+    }
+    .message.assistant.streaming::after {
+      content: '▌';
+      animation: blink .7s infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* Inline markdown inside assistant messages */
+    .message p  { margin: 0.25em 0; }
+    .message p:first-child { margin-top: 0; }
+    .message p:last-child  { margin-bottom: 0; }
+    .message ul, .message ol { padding-left: 1.3em; margin: 0.3em 0; }
+    .message li  { margin: 0.15em 0; }
+    .message strong { color: #f8fafc; font-weight: 600; }
+    .message code {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      padding: 0.1em 0.35em;
+      font-size: 0.84em;
+      font-family: 'Cascadia Code', 'Fira Code', 'Courier New', monospace;
+    }
+    .message hr { border: none; border-top: 1px solid #334155; margin: 0.5em 0; }
+
+    /* ── Thinking row ────────────────────────────────────────────────── */
+    .thinking {
+      align-self: flex-start;
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      font-size: 0.8rem;
+      color: #64748b;
+      padding: 0.3rem 0;
+    }
+    .thinking-dots { display: flex; gap: 3px; }
+    .thinking-dots span {
+      display: inline-block;
+      width: 5px; height: 5px;
+      background: #475569;
+      border-radius: 50%;
+      animation: bounce 1.2s infinite ease-in-out;
+    }
+    .thinking-dots span:nth-child(2) { animation-delay: .2s; }
+    .thinking-dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes bounce {
+      0%, 80%, 100% { transform: translateY(0);   opacity: .6; }
+      40%           { transform: translateY(-5px); opacity: 1;  }
+    }
+
+    /* ── Hint ────────────────────────────────────────────────────────── */
+    .hint {
+      align-self: center;
+      font-size: 0.78rem;
+      color: #475569;
+      text-align: center;
+      margin: auto 0;
+    }
+
+    /* ── Input bar ───────────────────────────────────────────────────── */
+    form {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.875rem 1.5rem;
+      background: #1e293b;
+      border-top: 1px solid #334155;
+    }
+    textarea {
+      flex: 1;
+      resize: none;
+      background: #0f172a;
+      color: #f1f5f9;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 0.6rem 0.9rem;
+      font-family: inherit;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      max-height: 120px;
+      outline: none;
+      transition: border-color .15s;
+    }
+    textarea:focus { border-color: #0ea5e9; }
+    button[type="submit"] {
+      background: #0ea5e9;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 0 1.2rem;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: background .15s;
+      align-self: flex-end;
+      height: 2.5rem;
+      flex-shrink: 0;
+    }
+    button[type="submit"]:hover:not(:disabled) { background: #0284c7; }
+    button[type="submit"]:disabled { background: #334155; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo">🚗</span>
+    <div class="header-text">
+      <h1>Car Inventory Assistant</h1>
+      <span>Ollama · Qwen 2.5 · MCP Tool Calling · ASP.NET Core 8</span>
+    </div>
+    <button id="clearBtn">🗑 Clear</button>
+  </header>
+
+  <div id="chips">
+    <button class="chip" data-prompt="Give me an inventory summary">📊 Inventory summary</button>
+    <button class="chip" data-prompt="Show all available cars">🚗 Available cars</button>
+    <button class="chip" data-prompt="Which BMWs are available under €30 000?">🔍 BMW under €30k</button>
+    <button class="chip" data-prompt="What are the most expensive cars in stock?">💶 Most expensive</button>
+    <button class="chip" data-prompt="Show the service history for car with ID 1">🔧 Service history #1</button>
+  </div>
+
+  <div id="chat">
+    <p class="hint">Ask anything about the inventory — makes, availability, service history, prices…</p>
+  </div>
+
+  <form id="form">
+    <textarea id="input" rows="1" placeholder="e.g. Which BMWs are available under €30 000?" required></textarea>
+    <button id="send" type="submit">➤</button>
+  </form>
+
+  <script>
+    const chatEl  = document.getElementById('chat');
+    const form    = document.getElementById('form');
+    const input   = document.getElementById('input');
+    const sendBtn = document.getElementById('send');
+
+    // ── Auto-resize textarea ────────────────────────────────────────────
+    input.addEventListener('input', () => {
+      input.style.height = 'auto';
+      input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+    });
+
+    // ── Submit on Enter (Shift+Enter = newline) ─────────────────────────
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); form.requestSubmit(); }
+    });
+
+    // ── Suggested chips ─────────────────────────────────────────────────
+    document.getElementById('chips').addEventListener('click', e => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      input.value = chip.dataset.prompt;
+      input.dispatchEvent(new Event('input'));
+      input.focus();
+    });
+
+    // ── Clear chat ──────────────────────────────────────────────────────
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      chatEl.innerHTML = '<p class="hint">Ask anything about the inventory — makes, availability, service history, prices…</p>';
+    });
+
+    // ── DOM helpers ─────────────────────────────────────────────────────
+    function appendMessage(role, text = '') {
+      chatEl.querySelector('.hint')?.remove();
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+      if (text) div.textContent = text;
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+      return div;
+    }
+
+    function createThinkingRow(label = 'Thinking…') {
+      chatEl.querySelector('.hint')?.remove();
+      const div = document.createElement('div');
+      div.className = 'thinking';
+      div.innerHTML =
+        `<div class="thinking-dots"><span></span><span></span><span></span></div>` +
+        `<span class="thinking-label">${label}</span>`;
+      chatEl.appendChild(div);
+      chatEl.scrollTop = chatEl.scrollHeight;
+      return div;
+    }
+
+    // ── Markdown renderer (applied once streaming completes) ────────────
+    function renderMarkdown(raw) {
+      const lines = raw.split('\n');
+      let html = '';
+      let inUl = false, inOl = false;
+
+      function closeList() {
+        if (inUl) { html += '</ul>'; inUl = false; }
+        if (inOl) { html += '</ol>'; inOl = false; }
+      }
+
+      function escape(t) {
+        return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      }
+
+      function inline(t) {
+        return escape(t)
+          .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.+?)\*/g,     '<em>$1</em>')
+          .replace(/`([^`]+)`/g,     '<code>$1</code>');
+      }
+
+      for (const line of lines) {
+        const ulM = line.match(/^[\-\*] (.+)/);
+        const olM = line.match(/^\d+\. (.+)/);
+        const hrM = line.match(/^[-*_]{3,}$/);
+
+        if (ulM) {
+          if (inOl) { html += '</ol>'; inOl = false; }
+          if (!inUl) { html += '<ul>'; inUl = true; }
+          html += `<li>${inline(ulM[1])}</li>`;
+        } else if (olM) {
+          if (inUl) { html += '</ul>'; inUl = false; }
+          if (!inOl) { html += '<ol>'; inOl = true; }
+          html += `<li>${inline(olM[1])}</li>`;
+        } else if (hrM) {
+          closeList();
+          html += '<hr>';
+        } else {
+          closeList();
+          html += line.trim() === '' ? '<br>' : `<p>${inline(line)}</p>`;
+        }
+      }
+      closeList();
+      return html;
+    }
+
+    // ── Submit handler ──────────────────────────────────────────────────
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const message = input.value.trim();
+      if (!message) return;
+
+      input.value = '';
+      input.style.height = 'auto';
+      sendBtn.disabled = true;
+
+      appendMessage('user', message);
+      const thinkingEl = createThinkingRow();
+
+      let assistantEl  = null;
+      let rawText      = '';
+      let firstToken   = true;
+
+      try {
+        const res = await fetch('/api/chat', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ message }),
+        });
+
+        if (!res.ok) {
+          thinkingEl.remove();
+          appendMessage('assistant', `Error ${res.status}: ${await res.text()}`);
+          return;
+        }
+
+        const reader  = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          const lines = buffer.split('\n');
+          buffer = lines.pop() ?? '';
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const payload = line.slice(6).trim();
+            if (payload === '[DONE]') break;
+
+            try {
+              const event = JSON.parse(payload);
+
+              if (event.status !== undefined) {
+                thinkingEl.querySelector('.thinking-label').textContent = event.status;
+                chatEl.scrollTop = chatEl.scrollHeight;
+
+              } else if (event.token !== undefined) {
+                if (firstToken) {
+                  thinkingEl.remove();
+                  firstToken   = false;
+                  assistantEl  = appendMessage('assistant', '');
+                  assistantEl.classList.add('streaming');
+                }
+                rawText += event.token;
+                assistantEl.textContent = rawText;
+                chatEl.scrollTop = chatEl.scrollHeight;
+              }
+            } catch { /* skip malformed line */ }
+          }
+        }
+
+      } catch (err) {
+        thinkingEl.remove();
+        appendMessage('assistant', `Connection error: ${err.message}`);
+      } finally {
+        thinkingEl.remove();
+        if (assistantEl) {
+          assistantEl.classList.remove('streaming');
+          if (rawText) assistantEl.innerHTML = renderMarkdown(rawText);
+        }
+        sendBtn.disabled = false;
+        input.focus();
+      }
+    });
+  </script>
+</body>
+</html>

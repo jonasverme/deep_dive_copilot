@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "ado": {
+      "command": "npx",
+      "args": ["-y", "@azure-devops/mcp", "am-scaleup", "--authentication", "pat"],
+      "env": {
+        "PERSONAL_ACCESS_TOKEN": "${env:PERSONAL_ACCESS_TOKEN}"
+      },
+      "tools": ["*"]
+    }
+  }
+}

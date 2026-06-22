@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>CarInventory.Mcp</RootNamespace>
+    <!-- Self-contained so it can be invoked by Copilot CLI as a subprocess -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol"        Version="0.1.0-preview.10" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1"  />
+  </ItemGroup>
+
+</Project>

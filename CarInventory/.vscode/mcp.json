@@ -1,0 +1,20 @@
+{
+  "servers": {
+    "carinventory": {
+      "type": "stdio",
+      "command": "dotnet",
+      "args": [
+        "/Users/vermeulenjonas/Desktop/CarInventory/CarInventory.Mcp/bin/Debug/net8.0/CarInventory.Mcp.dll",
+        "http://localhost:5000"
+      ]
+    },
+    "ado": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@azure-devops/mcp", "am-scaleup", "--authentication", "pat"],
+      "env": {
+        "PERSONAL_ACCESS_TOKEN": "${env:PERSONAL_ACCESS_TOKEN}"
+      }
+    }
+  }
+}
