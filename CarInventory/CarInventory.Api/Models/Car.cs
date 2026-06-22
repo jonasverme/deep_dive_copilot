@@ -1,5 +1,8 @@
 namespace CarInventory.Api.Models;
 
+/// <summary>
+/// 
+/// </summary>
 public class Car
 {
     public int    Id       { get; set; }
