@@ -55,10 +55,13 @@ public static class ChatEndpoints
             };
 
             // ── 3. Tool-calling loop with live status events ───────────────────
+            int totalPromptTokens = 0, totalCompletionTokens = 0;
             const int MaxRounds = 5;
             for (int round = 0; round < MaxRounds; round++)
             {
                 var response = await ollama.ChatAsync(messages, ollamaTools, ct);
+                totalPromptTokens     += response.PromptEvalCount ?? 0;
+                totalCompletionTokens += response.EvalCount       ?? 0;
 
                 if (response.Message?.ToolCalls is not { Count: > 0 } toolCalls)
                 {
@@ -86,15 +89,33 @@ public static class ChatEndpoints
             }
 
             // ── 4. Stream final answer as token events ────────────────────────
-            await foreach (var token in ollama.StreamAsync(messages, ct))
+            await foreach (var chunk in ollama.StreamAsync(messages, ct))
             {
-                await WriteEventAsync(http, new { token }, ct);
+                if (chunk.Token is not null)
+                    await WriteEventAsync(http, new { token = chunk.Token }, ct);
+
+                if (chunk.PromptTokens.HasValue)
+                {
+                    totalPromptTokens     += chunk.PromptTokens.Value;
+                    totalCompletionTokens += chunk.CompletionTokens ?? 0;
+                }
             }
 
+            await WriteEventAsync(http,
+                new { usage = new { promptTokens = totalPromptTokens, completionTokens = totalCompletionTokens } }, ct);
             await http.Response.WriteAsync("data: [DONE]\n\n", ct);
             await http.Response.Body.FlushAsync(ct);
 
             return Results.Empty;
+        });
+
+        // Share endpoint: renders a conversation summary page with a user-supplied title.
+        app.MapGet("/api/share", async (string? title, HttpContext http) =>
+        {
+            http.Response.ContentType = "text/html";
+            await http.Response.WriteAsync(
+                $"<html><head><title>Shared conversation</title></head>" +
+                $"<body><h1>{title}</h1><p>Shared from Car Inventory Assistant.</p></body></html>");
         });
 
         return app;

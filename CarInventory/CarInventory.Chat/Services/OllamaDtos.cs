@@ -25,5 +25,9 @@ public record OllamaToolFunction(
     [property: JsonPropertyName("parameters")]  JsonElement Parameters);
 
 public record OllamaResponse(
-    [property: JsonPropertyName("message")] OllamaMessage? Message,
-    [property: JsonPropertyName("done")]    bool Done);
+    [property: JsonPropertyName("message")]           OllamaMessage? Message,
+    [property: JsonPropertyName("done")]              bool Done,
+    [property: JsonPropertyName("prompt_eval_count")] int? PromptEvalCount,
+    [property: JsonPropertyName("eval_count")]        int? EvalCount);
+
+public record StreamChunk(string? Token, int? PromptTokens, int? CompletionTokens);
