@@ -397,6 +397,7 @@
 
             try {
               const event = JSON.parse(payload);
+              console.log('[SSE]', event);
 
               if (event.status !== undefined) {
                 thinkingEl.querySelector('.thinking-label').textContent = event.status;
