@@ -29,6 +29,7 @@
     .header-text { flex: 1; min-width: 0; }
     .header-text h1   { font-size: 1.05rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .header-text span { font-size: 0.75rem; color: #64748b; }
+    #token-total { color: #38bdf8; margin-left: 0.6rem; }
     #clearBtn {
       flex-shrink: 0;
       background: transparent;
@@ -195,6 +196,15 @@
     }
     button[type="submit"]:hover:not(:disabled) { background: #0284c7; }
     button[type="submit"]:disabled { background: #334155; cursor: not-allowed; }
+
+    /* ── Token badge ─────────────────────────────────────────────────── */
+    .token-badge {
+      align-self: flex-start;
+      font-size: 0.7rem;
+      color: #475569;
+      margin-top: -0.25rem;
+      padding: 0 0.25rem;
+    }
   </style>
 </head>
 <body>
@@ -202,7 +212,7 @@
     <span class="logo">🚗</span>
     <div class="header-text">
       <h1>Car Inventory Assistant</h1>
-      <span>Ollama · Qwen 2.5 · MCP Tool Calling · ASP.NET Core 8</span>
+      <span>Ollama · Qwen 2.5 · MCP Tool Calling · ASP.NET Core 8<span id="token-total"></span></span>
     </div>
     <button id="clearBtn">🗑 Clear</button>
   </header>
@@ -225,10 +235,19 @@
   </form>
 
   <script>
-    const chatEl  = document.getElementById('chat');
-    const form    = document.getElementById('form');
-    const input   = document.getElementById('input');
-    const sendBtn = document.getElementById('send');
+    const chatEl      = document.getElementById('chat');
+    const form        = document.getElementById('form');
+    const input       = document.getElementById('input');
+    const sendBtn     = document.getElementById('send');
+    const tokenTotal  = document.getElementById('token-total');
+
+    let sessionPrompt     = 0;
+    let sessionCompletion = 0;
+
+    function updateSessionCounter() {
+      const total = sessionPrompt + sessionCompletion;
+      tokenTotal.textContent = total > 0 ? ` · ${total.toLocaleString()} tokens` : '';
+    }
 
     // ── Auto-resize textarea ────────────────────────────────────────────
     input.addEventListener('input', () => {
@@ -253,6 +272,9 @@
     // ── Clear chat ──────────────────────────────────────────────────────
     document.getElementById('clearBtn').addEventListener('click', () => {
       chatEl.innerHTML = '<p class="hint">Ask anything about the inventory — makes, availability, service history, prices…</p>';
+      sessionPrompt = 0;
+      sessionCompletion = 0;
+      updateSessionCounter();
     });
 
     // ── DOM helpers ─────────────────────────────────────────────────────
@@ -341,6 +363,7 @@
       let assistantEl  = null;
       let rawText      = '';
       let firstToken   = true;
+      let lastUsage    = null;
 
       try {
         const res = await fetch('/api/chat', {
@@ -379,6 +402,9 @@
                 thinkingEl.querySelector('.thinking-label').textContent = event.status;
                 chatEl.scrollTop = chatEl.scrollHeight;
 
+              } else if (event.usage !== undefined) {
+                lastUsage = event.usage;
+
               } else if (event.token !== undefined) {
                 if (firstToken) {
                   thinkingEl.remove();
@@ -402,6 +428,19 @@
         if (assistantEl) {
           assistantEl.classList.remove('streaming');
           if (rawText) assistantEl.innerHTML = renderMarkdown(rawText);
+
+          if (lastUsage) {
+            sessionPrompt     += lastUsage.promptTokens     ?? 0;
+            sessionCompletion += lastUsage.completionTokens ?? 0;
+            updateSessionCounter();
+
+            const badge = document.createElement('div');
+            badge.className = 'token-badge';
+            badge.textContent =
+              `↑ ${(lastUsage.promptTokens ?? 0).toLocaleString()} prompt · ` +
+              `↓ ${(lastUsage.completionTokens ?? 0).toLocaleString()} completion`;
+            assistantEl.after(badge);
+          }
         }
         sendBtn.disabled = false;
         input.focus();

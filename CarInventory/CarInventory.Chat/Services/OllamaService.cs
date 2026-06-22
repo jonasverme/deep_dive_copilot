@@ -27,7 +27,7 @@ public class OllamaService(IHttpClientFactory factory, IConfiguration config) : 
                ?? throw new InvalidOperationException("Empty response from Ollama.");
     }
 
-    public async IAsyncEnumerable<string> StreamAsync(
+    public async IAsyncEnumerable<StreamChunk> StreamAsync(
         IList<OllamaMessage> messages,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
@@ -55,9 +55,13 @@ public class OllamaService(IHttpClientFactory factory, IConfiguration config) : 
             catch (JsonException) { continue; }
 
             if (chunk?.Message?.Content is { Length: > 0 } text)
-                yield return text;
+                yield return new StreamChunk(text, null, null);
 
-            if (chunk?.Done == true) break;
+            if (chunk?.Done == true)
+            {
+                yield return new StreamChunk(null, chunk.PromptEvalCount, chunk.EvalCount);
+                break;
+            }
         }
     }
 }

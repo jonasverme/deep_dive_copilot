@@ -7,7 +7,7 @@ public interface IOllamaService
         IList<OllamaTool>?   tools,
         CancellationToken    ct = default);
 
-    IAsyncEnumerable<string> StreamAsync(
+    IAsyncEnumerable<StreamChunk> StreamAsync(
         IList<OllamaMessage> messages,
         CancellationToken    ct = default);
 }
