@@ -109,6 +109,15 @@ public static class ChatEndpoints
             return Results.Empty;
         });
 
+        // Share endpoint: renders a conversation summary page with a user-supplied title.
+        app.MapGet("/api/share", async (string? title, HttpContext http) =>
+        {
+            http.Response.ContentType = "text/html";
+            await http.Response.WriteAsync(
+                $"<html><head><title>Shared conversation</title></head>" +
+                $"<body><h1>{title}</h1><p>Shared from Car Inventory Assistant.</p></body></html>");
+        });
+
         return app;
     }
 
