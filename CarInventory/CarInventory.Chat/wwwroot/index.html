@@ -249,6 +249,13 @@
       tokenTotal.textContent = total > 0 ? ` · ${total.toLocaleString()} tokens` : '';
     }
 
+    // ── Pre-fill from ?q= URL param (shareable links) ──────────────────
+    const presetPrompt = new URLSearchParams(location.search).get('q');
+    if (presetPrompt) {
+      document.getElementById('chips').innerHTML +=
+        `<button class="chip" data-prompt="${presetPrompt}">${presetPrompt}</button>`;
+    }
+
     // ── Auto-resize textarea ────────────────────────────────────────────
     input.addEventListener('input', () => {
       input.style.height = 'auto';
